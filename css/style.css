@@ -1,0 +1,14 @@
+
+:root {
+  --bg: #09090B;
+  --text: #FFFFFF;
+  --accent: #3B82F6;
+  --font: 'Space Grotesk', sans-serif;
+  --max-w: 1200px;
+  --rad: 8px;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); margin: 0; line-height: 1.5; overflow-x: hidden; }
+.wrapper { max-width: var(--max-w); margin: 0 auto; padding: 0 1.5rem; width: 100%; }
+img, video { display: block; max-width: 100%; height: auto; }
+.glass { background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.1); }

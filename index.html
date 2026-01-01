@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Site</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./css/style.css">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="./js/data.js"></script>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Рендер картинок с учетом формы
+        const Visual = ({ media, style }) => {
+            if (!media?.imageUrl && !media?.videoUrl) return null;
+            const src = media.videoUrl || media.imageUrl;
+            
+            // Если в конструкторе задана форма - применяем её жестко
+            const shapeStyle = {};
+            if (media.shape === 'circle') { shapeStyle.borderRadius = '50%'; shapeStyle.aspectRatio = '1/1'; }
+            if (media.shape === 'square') { shapeStyle.aspectRatio = '1/1'; }
+            if (media.shape === 'portrait') { shapeStyle.aspectRatio = '3/4'; }
+            if (media.shape === 'landscape') { shapeStyle.aspectRatio = '4/3'; }
+            if (media.shape === 'wide') { shapeStyle.aspectRatio = '16/9'; }
+
+            const finalStyle = { 
+                width: '100%', 
+                objectFit: 'cover', 
+                borderRadius: style.borderRadius || 'var(--rad)',
+                ...shapeStyle,
+                ...style // Ваши ручные стили имеют приоритет
+            };
+
+            if (media.type === 'video') return <video src={src} autoPlay muted loop playsInline style={finalStyle} />;
+            return <img src={src} style={finalStyle} />;
+        };
+
+        const Block = ({ block, index, isSticky }) => {
+            const { data = {}, media = {}, style = {}, layout = {} } = block.localOverrides || {};
+            const list = data.items || data.features || data.sections || data.team || data.testimonials || data.stats || data.groups || [];
+            const hasVisual = media.imageUrl || media.videoUrl;
+
+            // --- МАГИЯ: ПРЯМОЙ ПЕРЕНОС ВАШИХ НАСТРОЕК ---
+            // Мы берем значения прямо из JSON, не пытаясь их "нормализовать"
+            const sectionStyle = {
+                backgroundColor: style.backgroundColor,
+                color: style.color,
+                paddingTop: layout.paddingTop ? layout.paddingTop + 'px' : (index===0 && !isSticky ? '80px' : '64px'),
+                paddingBottom: layout.paddingBottom ? layout.paddingBottom + 'px' : '64px',
+                minHeight: layout.height || 'auto',
+                textAlign: layout.alignment || style.textAlign || 'left',
+                borderBottom: '1px solid rgba(255,255,255,0.05)'
+            };
+
+            // Сетка: Если вы задали 3 колонки - будет 3.
+            const cols = layout.columns || (list.length % 3 === 0 ? 3 : (list.length % 2 === 0 ? 2 : 1));
+            const gridClass = `grid gap-8 grid-cols-1 md:grid-cols-${cols}`;
+
+            return (
+                <section style={sectionStyle} className="relative flex flex-col justify-center">
+                    <div className="wrapper">
+                        {/* 1. Сценарий: Картинка + Текст (Split) */}
+                        {hasVisual && list.length === 0 ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                                <div className={index % 2 !== 0 ? "lg:order-2" : "lg:order-1"}>
+                                    {data.title && <h2 className="text-4xl md:text-6xl font-black mb-6 uppercase leading-none">{data.title}</h2>}
+                                    {data.description && <p className="text-lg opacity-70 leading-relaxed mb-8">{data.description}</p>}
+                                    {(data.primaryBtnVisible || data.secondaryBtnVisible) && (
+                                        <div className="flex gap-4 flex-wrap">
+                                            {data.primaryBtnVisible && <button className="px-8 py-3 bg-[var(--accent)] text-white font-bold rounded">{data.primaryBtnText || "Action"}</button>}
+                                            {data.secondaryBtnVisible && <button className="px-8 py-3 border border-current opacity-60 font-bold rounded">{data.secondaryBtnText || "More"}</button>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className={index % 2 !== 0 ? "lg:order-1" : "lg:order-2"}>
+                                    <Visual media={media} style={style} />
+                                </div>
+                            </div>
+                        ) : (
+                            /* 2. Сценарий: Просто контент или Сетка */
+                            <div className={block.type.includes('Footer') ? "text-center opacity-60" : ""}>
+                                <div className="max-w-4xl mx-auto mb-12">
+                                    {data.title && <h2 className="text-3xl md:text-5xl font-black mb-4 uppercase">{data.title}</h2>}
+                                    {data.description && <p className="text-lg opacity-70">{data.description}</p>}
+                                </div>
+
+                                {list.length > 0 && (
+                                    <div className={gridClass}>
+                                        {list.map((item, i) => (
+                                            <div key={i} className="p-6 bg-white/5 border border-white/10 rounded-[var(--rad)]">
+                                                {item.imageUrl && <img src={item.imageUrl} className="w-12 h-12 mb-4 rounded-full object-cover" />}
+                                                {item.value && <div className="text-4xl font-black text-[var(--accent)] mb-2">{item.value}</div>}
+                                                {(item.title||item.name) && <h3 className="text-xl font-bold mb-2 uppercase">{item.title||item.name}</h3>}
+                                                {(item.desc||item.text) && <p className="text-sm opacity-60">{item.desc||item.text}</p>}
+                                                {/* Вложенные стеки */}
+                                                {item.items && (
+                                                    <div className="flex flex-wrap gap-2 mt-4">
+                                                        {item.items.map((sub, j) => (
+                                                            <span key={j} className="text-xs font-bold border border-white/20 px-2 py-1 rounded uppercase">{sub.name||sub.title}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </section>
+            );
+        };
+
+        const App = () => {
+            const state = window.__DNA__;
+            if (!state) return null;
+            const blocks = state.pages?.[state.currentPage || 'home'] || [];
+            
+            // Навбар отдельно
+            const navBlock = blocks.find(b => b.type.includes('Navbar'));
+            const contentBlocks = blocks.filter(b => !b.type.includes('Navbar') && b.isVisible);
+            const isSticky = state.globalSettings?.GL11?.params?.[0]?.value === 'true';
+
+            return (
+                <main>
+                    {navBlock && (
+                        <nav className={isSticky ? "fixed top-0 w-full z-50 glass" : "relative w-full border-b border-white/10"}>
+                            <div className="wrapper h-20 flex items-center justify-between font-bold text-xl tracking-widest uppercase">
+                                {navBlock.localOverrides?.data?.logoText || "LOGO"}
+                            </div>
+                        </nav>
+                    )}
+                    {contentBlocks.map((b, i) => <Block key={b.id} block={b} index={i} isSticky={isSticky} />)}
+                </main>
+            );
+        };
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
