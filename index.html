@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Website</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./css/style.css">
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"><div class="loader-wrapper"><div class="loader"></div></div></div>
+    
+    <script src="./js/data.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- КОМПОНЕНТЫ ---
+
+        const VisualRenderer = ({ media, style }) => {
+            if (!media) return null;
+            const { imageUrl, videoUrl, type, shape } = media;
+            const src = type === 'video' ? videoUrl : imageUrl;
+            if (!src) return null;
+
+            // Формы картинок
+            let aspectRatio = 'auto';
+            let borderRadius = style?.borderRadius || 'var(--dna-radius)';
+            if (shape === 'circle') { aspectRatio = '1 / 1'; borderRadius = '50%'; }
+            if (shape === 'square') { aspectRatio = '1 / 1'; }
+            if (shape === 'portrait') { aspectRatio = '3 / 4'; }
+            if (shape === 'landscape') { aspectRatio = '4 / 3'; }
+
+            const commonStyle = { width: '100%', height: '100%', objectFit: 'cover', ...style, borderRadius };
+
+            if (aspectRatio !== 'auto') {
+                return (
+                    <div style={{ width: '100%', aspectRatio, borderRadius, overflow: 'hidden' }}>
+                        {type === 'video' ? <video src={src} autoPlay muted loop playsInline style={commonStyle} /> : <img src={src} alt="Visual" style={commonStyle} />}
+                    </div>
+                );
+            }
+            return type === 'video' ? <video src={src} autoPlay muted loop playsInline style={style} className="shadow-xl rounded-[var(--dna-radius)]" /> : <img src={src} alt="Visual" style={style} className="shadow-xl rounded-[var(--dna-radius)]" />;
+        };
+
+        const Navbar = ({ block, isSticky }) => {
+            const data = block.localOverrides?.data || {};
+            return (
+                <nav className={isSticky ? 'fixed top-0 left-0 w-full z-50 glass-nav' : 'relative w-full'}>
+                    <div className="container-dna h-20 flex items-center justify-between">
+                        <div className="font-bold text-xl uppercase tracking-widest">{data.logoText || "LOGO"}</div>
+                    </div>
+                </nav>
+            );
+        };
+
+        const MasterBlock = ({ block, index, isStickyNav }) => {
+            const overrides = block.localOverrides || {};
+            const data = overrides.data || {};
+            const media = overrides.media || {};
+            const style = overrides.style || {};
+            const layout = overrides.layout || {};
+
+            const list = data.items || data.features || data.sections || data.team || data.testimonials || data.stats || data.groups || data.steps || [];
+            const hasList = list.length > 0;
+            const hasVisual = (media.showImage && media.imageUrl) || (media.type === 'video' && media.videoUrl);
+            const isFooter = block.type.includes('Footer') || index === window.__DNA_STATE__.pages.home.length - 1;
+
+            // Стили секции
+            const sectionStyle = {
+                minHeight: layout.height || 'auto',
+                paddingTop: layout.paddingTop ? layout.paddingTop + 'px' : (index === 0 && !isStickyNav ? '80px' : '6rem'),
+                paddingBottom: layout.paddingBottom ? layout.paddingBottom + 'px' : '6rem',
+                ...style 
+            };
+
+            // Сетка
+            let gridClass = 'grid-cols-1 md:grid-cols-3';
+            if (layout.columns == 2) gridClass = 'grid-cols-1 md:grid-cols-2';
+            if (layout.columns == 3) gridClass = 'grid-cols-1 md:grid-cols-3';
+            if (layout.columns == 4) gridClass = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
+
+            const textAlignClass = 'text-' + (layout.alignment || style.textAlign || 'left');
+
+            return (
+                <section className="relative border-b border-white/5 flex flex-col justify-center" style={sectionStyle}>
+                    <div className="container-dna w-full">
+                        {/* Сценарий 1: Картинка + Текст */}
+                        {hasVisual && !hasList && !isFooter ? (
+                            <div className={"grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"}>
+                                <div className={index % 2 !== 0 ? "lg:order-2" : "lg:order-1"}>
+                                     <div className={textAlignClass}>
+                                        {data.title && <h2 className="text-4xl md:text-7xl font-black mb-6 leading-[0.9] uppercase">{data.title}</h2>}
+                                        {data.description && <p className="text-xl opacity-60 leading-relaxed mb-8">{data.description}</p>}
+                                        {(data.primaryBtnVisible || data.secondaryBtnVisible) && (
+                                            <div className={"flex gap-4 " + (textAlignClass.includes('center') ? "justify-center" : "")}>
+                                                {data.primaryBtnVisible && <button className="px-8 py-4 bg-[var(--dna-accent)] text-white font-bold rounded">{data.primaryBtnText || "Action"}</button>}
+                                                {data.secondaryBtnVisible && <button className="px-8 py-4 border border-current opacity-60 hover:opacity-100 font-bold rounded">{data.secondaryBtnText || "More"}</button>}
+                                            </div>
+                                        )}
+                                     </div>
+                                </div>
+                                <div className={index % 2 !== 0 ? "lg:order-1 flex justify-center" : "lg:order-2 flex justify-center"}>
+                                    <VisualRenderer media={media} style={style} />
+                                </div>
+                            </div>
+                        ) : (
+                            /* Сценарий 2: Центр / Сетки */
+                            <div className={isFooter ? "text-center opacity-50" : ""}>
+                                <div className={"max-w-4xl mx-auto mb-16 " + textAlignClass}>
+                                    {data.title && <h2 className={(isFooter ? "text-xl" : "text-4xl md:text-6xl") + " font-black mb-6 uppercase"}>{data.title}</h2>}
+                                    {data.description && <p className={(isFooter ? "text-sm" : "text-lg") + " opacity-60 leading-relaxed"}>{data.description}</p>}
+                                </div>
+                                {hasList && (
+                                    <div className={"grid gap-8 " + gridClass}>
+                                        {list.map((item, i) => (
+                                            <div key={i} className="p-8 border border-white/10 rounded-[var(--dna-radius)] bg-white/5 hover:bg-white/10 transition-colors">
+                                                {item.imageUrl && <div className="mb-6"><img src={item.imageUrl} className="w-16 h-16 object-cover rounded-full" /></div>}
+                                                {item.value && <div className="text-5xl font-black text-[var(--dna-accent)] mb-2">{item.value}</div>}
+                                                {(item.title || item.name || item.label) && <h3 className="text-xl font-bold mb-2 uppercase">{item.title || item.name || item.label}</h3>}
+                                                {(item.desc || item.text) && <p className="opacity-60 text-sm leading-relaxed mb-4">{item.desc || item.text}</p>}
+                                                
+                                                {/* Вложенные теги (Stack) */}
+                                                {item.items && Array.isArray(item.items) && (
+                                                    <div className="flex flex-wrap gap-2 mt-4">
+                                                        {item.items.map((sub, j) => (
+                                                            <span key={j} className="px-3 py-1 bg-white/10 rounded text-xs font-bold uppercase tracking-wider border border-white/20">
+                                                                {sub.name || sub.title} 
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {item.level && !item.items && <div className="w-full bg-white/10 h-1 mt-4 rounded-full overflow-hidden"><div className="bg-[var(--dna-accent)] h-full" style={{width: item.level + '%'}}></div></div>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </section>
+            );
+        };
+
+        const App = () => {
+            const state = window.__DNA_STATE__;
+            if (!state) return null;
+            useEffect(() => { const l = document.querySelector('.loader-wrapper'); if(l) l.remove(); }, []);
+            const blocks = state.pages?.[state.currentPage || 'home'] || [];
+            const isStickyNav = state.globalSettings?.GL11?.params?.find(p => p.id === 'P1')?.value === 'true';
+
+            return (
+                <main>
+                    {blocks.filter(b => b.isVisible).map((b, idx) => (
+                         b.type.includes('Navbar') 
+                            ? <Navbar key={b.id} block={b} isSticky={isStickyNav} /> 
+                            : <MasterBlock key={b.id} block={b} index={idx} isStickyNav={isStickyNav} />
+                    ))}
+                </main>
+            );
+        };
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
